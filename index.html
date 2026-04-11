@@ -1,0 +1,72 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Mapa de Calor Actualizado - ANPASA 2026</title>
+    <link rel="stylesheet" href="https://unpkg.com/leaflet@1.9.4/dist/leaflet.css" />
+    <style>
+        body { font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif; margin: 0; padding: 20px; background-color: #f4f4f9; }
+        #map-container { background: white; padding: 20px; border-radius: 12px; box-shadow: 0 4px 15px rgba(0,0,0,0.1); }
+        h2 { color: #2c3e50; margin-top: 0; }
+        #map { height: 600px; width: 100%; border-radius: 8px; }
+        .info { padding: 10px; background: white; border-radius: 5px; box-shadow: 0 0 15px rgba(0,0,0,0.2); }
+        .legend { line-height: 20px; color: #555; background: white; padding: 15px; border-radius: 5px; box-shadow: 0 0 15px rgba(0,0,0,0.2); }
+        .legend i { width: 18px; height: 18px; float: left; margin-right: 10px; opacity: 0.8; border: 1px solid #ccc; }
+    </style>
+</head>
+<body>
+
+<div id="map-container">
+    <h2>Mapa de Calor: Presencia de Obra en AMG</h2>
+    <p>Zonas con mayor actividad de obras:</p>
+    <div id="map"></div>
+</div>
+
+<script src="https://unpkg.com/leaflet@1.9.4/dist/leaflet.js"></script>
+<script>
+    const map = L.map('map').setView([20.6668, -103.3446], 11);
+
+    L.tileLayer('https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png', {
+        attribution: '&copy; OpenStreetMap contributors'
+    }).addTo(map);
+
+    const municipios = [
+        { name: "Zapopan", coords: [20.7200, -103.3919], color: "#ff0000", actividad: "Muy Alta", obra: "Obra vertical" },
+        { name: "Guadalajara", coords: [20.6767, -103.3475], color: "#ff4500", actividad: "Alta", obra: "Centro Histórico, Mercados, Vivienda." },
+        { name: "Tlajomulco", coords: [20.4740, -103.4475], color: "#ff8c00", actividad: "Alta", obra: "Aeropuerto, Naves Industriales." },
+        { name: "Tlaquepaque", coords: [20.6394, -103.3119], color: "#ffd700", actividad: "Media", obra: "Habitacional y Mantenimiento Urbano." },
+        { name: "El Salto", coords: [20.5181, -103.2431], color: "#2ecc71", actividad: "Moderada", obra: "Logística y Corredor Industrial." },
+        { name: "Tonalá", coords: [20.6242, -103.2400], color: "#add8e6", actividad: "Baja", obra: "Obra pública local" }
+    ];
+
+    municipios.forEach(muni => {
+        L.circle(muni.coords, {
+            color: muni.color,
+            fillColor: muni.color,
+            fillOpacity: 0.6,
+            radius: 4000
+        }).addTo(map).bindPopup(`
+            <b style="font-size: 1.1em;">${muni.name}</b><br>
+            <b>Actividad:</b> ${muni.actividad}<br>
+            <b>Obras clave:</b> ${muni.obra}
+        `);
+    });
+
+    const legend = L.control({position: 'bottomright'});
+    legend.onAdd = function (map) {
+        const div = L.DomUtil.create('div', 'info legend');
+        const grades = ["Máxima", "Muy Alta", "Alta", "Media", "Moderada", "Baja"];
+        const colors = ["#ff0000", "#ff4500", "#ff8c00", "#ffd700", "#2ecc71", "#add8e6"];
+
+        div.innerHTML += "<strong>Actividad de Obra</strong><br><hr>";
+        for (let i = 0; i < grades.length; i++) {
+            div.innerHTML += '<i style="background:' + colors[i] + '"></i> ' + grades[i] + '<br>';
+        }
+        return div;
+    };
+    legend.addTo(map);
+
+</script>
+</body>
+</html>
