@@ -1,72 +1,178 @@
 <!DOCTYPE html>
 <html lang="es">
 <head>
-    <meta charset="UTF-8">
-    <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Mapa de Calor Actualizado - ANPASA 2026</title>
-    <link rel="stylesheet" href="https://unpkg.com/leaflet@1.9.4/dist/leaflet.css" />
-    <style>
-        body { font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif; margin: 0; padding: 20px; background-color: #f4f4f9; }
-        #map-container { background: white; padding: 20px; border-radius: 12px; box-shadow: 0 4px 15px rgba(0,0,0,0.1); }
-        h2 { color: #2c3e50; margin-top: 0; }
-        #map { height: 600px; width: 100%; border-radius: 8px; }
-        .info { padding: 10px; background: white; border-radius: 5px; box-shadow: 0 0 15px rgba(0,0,0,0.2); }
-        .legend { line-height: 20px; color: #555; background: white; padding: 15px; border-radius: 5px; box-shadow: 0 0 15px rgba(0,0,0,0.2); }
-        .legend i { width: 18px; height: 18px; float: left; margin-right: 10px; opacity: 0.8; border: 1px solid #ccc; }
-    </style>
+<meta charset="UTF-8">
+<title>Cotizador de Renta 2026</title>
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<style>
+body{font-family:Arial,Helvetica,sans-serif;background:#f4f6f8;margin:20px}
+h1,h2{color:#003366}
+table{width:100%;border-collapse:collapse;background:#fff;margin-bottom:20px}
+th,td{border:1px solid #ccc;padding:8px}
+th{background:#e6eef6}
+input,select{width:100%;padding:6px}
+.right{text-align:right}
+.btn{background:#003366;color:#fff;border:none;padding:10px 14px;cursor:pointer}
+.btn:hover{background:#00509e}
+.total{font-size:18px;font-weight:bold}
+</style>
 </head>
 <body>
 
-<div id="map-container">
-    <h2>Mapa de Calor: Presencia de Obra en AMG</h2>
-    <p>Zonas con mayor actividad de obras:</p>
-    <div id="map"></div>
-</div>
+<h1>Cotizador de Renta – Precios 2026</h1>
 
-<script src="https://unpkg.com/leaflet@1.9.4/dist/leaflet.js"></script>
+<h2>Datos del Cliente</h2>
+<table>
+<tr><td>Cliente</td><td><input></td><td>Proyecto</td><td><input></td></tr>
+<tr><td>Ciudad</td><td><input></td><td>Vendedor</td><td><input></td></tr>
+<tr><td>Meses</td><td><input id="meses" type="number" value="1" min="1" onchange="calcular()"></td><td>Fecha</td><td><input type="date"></td></tr>
+</table>
+
+<h2>Detalle</h2>
+<table id="tabla">
+<thead>
+<tr>
+<th>Código</th>
+<th>Descripción</th>
+<th>Precio mensual</th>
+<th>Cantidad</th>
+<th>Subtotal</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td>
+<select onchange="cargarProducto(this)">
+<option value="">-- Seleccione --</option>
+</select>
+</td>
+<td class="desc"></td>
+<td class="precio right">$0.00</td>
+<td><input type="number" value="1" min="0" onchange="calcular()"></td>
+<td class="subtotal right">$0.00</td>
+</tr>
+</tbody>
+</table>
+
+<button class="btn" onclick="agregarFila()">Agregar producto</button>
+
+<h2>Resumen</h2>
+<table>
+<tr><td>Subtotal mensual</td><td class="right" id="subMensual">$0.00</td></tr>
+<tr><td>Total renta</td><td class="right" id="totalRenta">$0.00</td></tr>
+<tr><td>IVA 16%</td><td class="right" id="iva">$0.00</td></tr>
+<tr><td class="total">TOTAL</td><td class="right total" id="totalFinal">$0.00</td></tr>
+</table>
+
 <script>
-    const map = L.map('map').setView([20.6668, -103.3446], 11);
+/* ================================
+   CATÁLOGO COMPLETO RENTA 2026
+   Consolidado de AMBOS ARCHIVOS
+   Regla: precio más alto por código
+================================ */
 
-    L.tileLayer('https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png', {
-        attribution: '&copy; OpenStreetMap contributors'
-    }).addTo(map);
+const productos = {
+  "0620.122":{d:"VIGA H20 1.22M",p:254.10},
+  "0620.200":{d:"VIGA H20 2.00M",p:84.60},
+  "0620.245":{d:"VIGA H20 2.45M",p:107.10},
+  "0620.290":{d:"VIGA H20 2.90M",p:120.53},
+  "0620.330":{d:"VIGA H20 3.30M",p:138.00},
+  "0620.360":{d:"VIGA H20 3.60M",p:156.90},
+  "0620.450":{d:"VIGA H20 4.50M",p:195.90},
+  "0620.590":{d:"VIGA H20 5.90M",p:257.10},
 
-    const municipios = [
-        { name: "Zapopan", coords: [20.7200, -103.3919], color: "#ff0000", actividad: "Muy Alta", obra: "Obra vertical" },
-        { name: "Guadalajara", coords: [20.6767, -103.3475], color: "#ff4500", actividad: "Alta", obra: "Centro Histórico, Mercados, Vivienda." },
-        { name: "Tlajomulco", coords: [20.4740, -103.4475], color: "#ff8c00", actividad: "Alta", obra: "Aeropuerto, Naves Industriales." },
-        { name: "Tlaquepaque", coords: [20.6394, -103.3119], color: "#ffd700", actividad: "Media", obra: "Habitacional y Mantenimiento Urbano." },
-        { name: "El Salto", coords: [20.5181, -103.2431], color: "#2ecc71", actividad: "Moderada", obra: "Logística y Corredor Industrial." },
-        { name: "Tonalá", coords: [20.6242, -103.2400], color: "#add8e6", actividad: "Baja", obra: "Obra pública local" }
-    ];
+  "0710.104":{d:"MEDIA GRAPA 19MM C/ECLISA",p:38.70},
 
-    municipios.forEach(muni => {
-        L.circle(muni.coords, {
-            color: muni.color,
-            fillColor: muni.color,
-            fillOpacity: 0.6,
-            radius: 4000
-        }).addTo(map).bindPopup(`
-            <b style="font-size: 1.1em;">${muni.name}</b><br>
-            <b>Actividad:</b> ${muni.actividad}<br>
-            <b>Obras clave:</b> ${muni.obra}
-        `);
-    });
+  "1259.201":{d:"RUEDA 700 KG C/BASE REGULABLE",p:221.70},
+  "1260.201":{d:"RUEDA 1000 KG C/BASE REG.",p:317.70},
+  "1267.200":{d:"RUEDA 1200 CON HUESILLO Y MEDIA GRAPA",p:603.30},
 
-    const legend = L.control({position: 'bottomright'});
-    legend.onAdd = function (map) {
-        const div = L.DomUtil.create('div', 'info legend');
-        const grades = ["Máxima", "Muy Alta", "Alta", "Media", "Moderada", "Baja"];
-        const colors = ["#ff0000", "#ff4500", "#ff8c00", "#ffd700", "#2ecc71", "#add8e6"];
+  "1753.257":{d:"ESCALERA DE ALUMINIO 2.57",p:1050.00},
 
-        div.innerHTML += "<strong>Actividad de Obra</strong><br><hr>";
-        for (let i = 0; i < grades.length; i++) {
-            div.innerHTML += '<i style="background:' + colors[i] + '"></i> ' + grades[i] + '<br>';
-        }
-        return div;
-    };
-    legend.addTo(map);
+  "2601.039":{d:"HORIZONTAL 0.39 M",p:63.30},
+  "2601.073":{d:"SOPORTE HORIZONTAL 0.73",p:51.30},
+  "2601.109":{d:"SOPORTE HORIZONTAL 1.09",p:60.90},
+  "2601.157":{d:"SOPORTE HORIZONTAL 1.57",p:74.10},
+  "2601.207":{d:"SOPORTE HORIZONTAL 2.07",p:86.70},
+  "2601.257":{d:"SOPORTE HORIZONTAL 2.57",p:98.70},
+  "2601.307":{d:"SOPORTE HORIZONTAL 3.07",p:111.90},
 
+  "2603.200":{d:"POSTE VERTICAL 2.00 C/ESPIGA",p:108.30},
+  "2603.300":{d:"POSTE VERTICAL 3.00 C/ESPIGA",p:160.50},
+
+  "2628.000":{d:"GRAPA DOBLE CABEZA ALLROUND",p:52.50},
+  "4700.022":{d:"GRAPA ORTOGONAL",p:23.70},
+  "4702.022":{d:"GRAPA GIRATORIA",p:29.70},
+
+  "M-091":{d:"MARCO",p:159.90},
+  "M-152":{d:"MARCO",p:195.30},
+  "M-193":{d:"MARCO",p:227.10},
+
+  "P-213":{d:"PLATAFORMA",p:266.70},
+
+  "TB-50":{d:"TORNILLO BASE",p:39.30},
+  "TA-40":{d:"TORNILLO DE AJUSTE",p:35.70},
+
+  "PESC-STD":{d:"JUEGO PESCANTE ESTÁNDAR COLGANTE",p:1590},
+  "PESC-ACE":{d:"PESCANTE ANDAMIO COLGANTE ELÉCTRICO",p:5190},
+
+  "AA200GRU_MED":{d:"COLGANTE SEG. MEDIANO 2.00M GRUESO",p:6570},
+  "AA300GRU_MED":{d:"COLGANTE SEG. MEDIANO 3.00M GRUESO",p:6570},
+  "AA480GRU_MED":{d:"COLGANTE SEG. MEDIANO 4.80M GRUESO",p:6570},
+
+  "AA_KIT600":{d:"KIT PLATAFORMA 6.00 MTS",p:32970},
+  "AA_KIT800":{d:"KIT PLATAFORMA 8.00 MTS",p:35250}
+};
+
+/* ===== LÓGICA ===== */
+
+function cargarSelects(){
+ document.querySelectorAll("select").forEach(sel=>{
+  if(sel.options.length===1){
+   for(let k in productos){
+    let o=document.createElement("option");
+    o.value=k;o.textContent=k;sel.appendChild(o);
+}}});
+}
+
+function cargarProducto(sel){
+ let r=sel.closest("tr"),pr=productos[sel.value];
+ if(!pr)return;
+ r.querySelector(".desc").textContent=pr.d;
+ r.querySelector(".precio").textContent="$"+pr.p.toFixed(2);
+ calcular();
+}
+
+function calcular(){
+ let sm=0,m=Number(document.getElementById("meses").value)||1;
+ document.querySelectorAll("#tabla tbody tr").forEach(r=>{
+  let c=r.querySelector("select").value,
+      q=Number(r.querySelector("input").value)||0;
+  if(!productos[c])return;
+  let s=productos[c].p*q;
+  r.querySelector(".subtotal").textContent="$"+s.toFixed(2);
+  sm+=s;
+ });
+ let tr=sm*m,iva=tr*0.16;
+ document.getElementById("subMensual").textContent="$"+sm.toFixed(2);
+ document.getElementById("totalRenta").textContent="$"+tr.toFixed(2);
+ document.getElementById("iva").textContent="$"+iva.toFixed(2);
+ document.getElementById("totalFinal").textContent="$"+(tr+iva).toFixed(2);
+}
+
+function agregarFila(){
+ let t=document.querySelector("#tabla tbody"),
+ n=t.rows[0].cloneNode(true);
+ n.querySelector("select").selectedIndex=0;
+ n.querySelector(".desc").textContent="";
+ n.querySelector(".precio").textContent="$0.00";
+ n.querySelector(".subtotal").textContent="$0.00";
+ n.querySelector("input").value=1;
+ t.appendChild(n);cargarSelects();
+}
+
+cargarSelects();
 </script>
+
 </body>
 </html>
